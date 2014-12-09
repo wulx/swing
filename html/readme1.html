@@ -1,0 +1,605 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Trajectory optimization using pattern search</title><meta name="generator" content="MATLAB 8.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-12-05"><meta name="DC.source" content="readme1.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Trajectory optimization using pattern search</h1><!--introduction--><p>Back to the <a href="readme.html">main</a> page.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Dwell time optimization</a></li></ul></div><p><b>initialization</b></p><pre class="codeinput">close <span class="string">all</span>; clear <span class="string">all</span>; clc
+
+<span class="comment">% helper for displaying the file source in web browser</span>
+openInEditor = @(fname) edit(fullfile(pwd, fname));
+</pre><h2>Dwell time optimization<a name="2"></a></h2><p>Conduct dwell time optimization using Pattern Search method</p><pre class="language-matlab">[r, dwellTime] = dwellopt(wa, wd, wf, w1, w2, crt, strokeTime, timeStep, stepAngleDeg, leafWidth)
+</pre><pre>varargin:
+  @params to be optimized
+    wa   --  weight factors of number of acceleration steps, (0, 1)
+    wd   --  weight factors of number of deceleration steps, (0, 1)
+    wf   --  weight factors of initial frequency, (0, 1)
+    w1   --  to enlarge amplitude of peaks or valleys
+    w2   --  to braoden step differences
+  @params to set
+    ogee          --  initial dwell time data
+    strokeTime    --  time per a stroke [s]
+    timeStep      --  time step
+    stepAngleDeg  --  step angle in degree
+    leafWidth     --  width of the dynamic leaf
+varargout:
+  r           --  RMSD of dwell time
+  dwellTime   --  calculated dwell time</pre><p>Source code:</p><div><ul><li><a href="matlab:edit('dwelloptRun.m')"><b>dwelloptRun.m</b></a></li><li>+ <a href="matlab:edit('spdiv.m')">spdiv.m</a></li><li>++ <a href="matlab:edit('spis.m')">spis.m</a></li><li>++ <a href="matlab:edit('findpoints.m')">findpoints.m</a></li><li>+ <a href="matlab:edit('spdivRun.m')">spdivRun.m</a></li><li><a href="matlab:edit('dwellopt.m')"><b>dwellopt.m</b></a></li><li>+ <a href="matlab:edit('stepsamp.m')">stepsamp.m</a></li><li>++ <a href="matlab:edit('timeperstepd.m')">timeperstepd.m</a></li><li>+ <a href="matlab:edit('step2width.m')">step2width.m</a></li><li>+ <a href="matlab:edit('timecount.m')">timecount.m</a></li><li>+ <a href="matlab:edit('rmsd.m')">rmsd.m</a></li></ul></div><pre class="codeinput">leafWidth = 60; <span class="comment">% 60 mm</span>
+timeStep = 0.001; <span class="comment">% 1ms</span>
+stepAngleDeg = 1.8 / 8; <span class="comment">% degree</span>
+
+<span class="comment">% load the latest edition of DWELL_TIME_*.mat</span>
+latestFile = selatest(<span class="string">'data'</span>, <span class="string">'DWELL_TIME_*.mat'</span>);
+D = load(latestFile);
+
+<span class="comment">% call the script for dividing splines into S-curves</span>
+useDefaultSettings = false; spdivRun
+
+<span class="comment">% append C to DWELL_TIME_*.mat</span>
+save(latestFile, <span class="string">'C'</span>, <span class="string">'-append'</span>)
+disp([<span class="string">'... append C to '</span> latestFile])
+
+<span class="comment">% Profile the trajectory optimization</span>
+<span class="comment">% profile on</span>
+
+<span class="comment">% call the script for generating the ion beam current density distribution</span>
+useDefaultSettings = false; dwelloptRun
+
+<span class="comment">% profile off</span>
+<span class="comment">% profsave(profile('info'),'dwellopt_profile')</span>
+
+
+fileName = [<span class="string">'data/OPT_RESULT_'</span> num2str(now, 12) <span class="string">'.mat'</span>];
+save(fileName, <span class="string">'C'</span>, <span class="string">'params'</span>, <span class="string">'rmsds'</span>, <span class="string">'optDwellTime'</span>)
+disp([<span class="string">'... saved as '</span> fileName])
+</pre><pre class="codeoutput">... append C to data\DWELL_TIME_2_36_735934.471040.mat
+Warning: matlabpool will be removed in a future release.
+To query the size of an already started parallel pool, query the 'NumWorkers'
+property of the pool.
+To check if a pool is already started use 'isempty(gcp('nocreate'))'. 
+Warning: matlabpool will be removed in a future release.
+Use parpool instead. 
+Starting matlabpool using the 'local' profile ... connected to 3 workers.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0130822           0.1      
+    1       41      0.0113547           0.1     Successful Poll
+    2       81      0.0103777           0.1     Successful Poll
+    3      121      0.0103431           0.1     Successful Poll
+    4      161      0.0103275           0.1     Successful Poll
+    5      201      0.0103194           0.1     Successful Poll
+    6      241      0.0103194          0.05     Refine Mesh
+    7      281      0.0103194         0.025     Refine Mesh
+    8      321      0.0102182          0.05     Successful Poll
+    9      361      0.0102143           0.1     Successful Poll
+   10      401      0.0102143          0.05     Refine Mesh
+   11      441      0.0102143         0.025     Refine Mesh
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0170078           0.1      
+    1       41      0.0133674           0.1     Successful Poll
+    2       81      0.0122197           0.1     Successful Poll
+    3      121      0.0122151           0.1     Successful Poll
+    4      161      0.0122073           0.1     Successful Poll
+    5      201      0.0122029           0.1     Successful Poll
+    6      241      0.0121968           0.1     Successful Poll
+    7      281      0.0121968          0.05     Refine Mesh
+    8      321      0.0121968         0.025     Refine Mesh
+    9      361      0.0121968        0.0125     Refine Mesh
+   10      401      0.0118597         0.025     Successful Poll
+   11      441      0.0118597        0.0125     Refine Mesh
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0229619           0.1      
+    1       41       0.017016           0.1     Successful Poll
+    2       81      0.0155764           0.1     Successful Poll
+    3      121      0.0152874           0.1     Successful Poll
+    4      161      0.0145791           0.1     Successful Poll
+    5      201      0.0143945           0.1     Successful Poll
+    6      241       0.014269           0.1     Successful Poll
+    7      281      0.0140065           0.1     Successful Poll
+    8      321      0.0139039           0.1     Successful Poll
+    9      361      0.0138519           0.1     Successful Poll
+   10      401      0.0138045           0.1     Successful Poll
+   11      441      0.0137624           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0451096           0.1      
+    1       35      0.0345121           0.1     Successful Poll
+    2       69      0.0300369           0.1     Successful Poll
+    3      103      0.0242681           0.1     Successful Poll
+    4      137      0.0224695           0.1     Successful Poll
+    5      171      0.0198508           0.1     Successful Poll
+    6      205      0.0188183           0.1     Successful Poll
+    7      239      0.0172909           0.1     Successful Poll
+    8      273      0.0140426           0.1     Successful Poll
+    9      307      0.0139779           0.1     Successful Poll
+   10      341      0.0133299           0.1     Successful Poll
+   11      375      0.0132769           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0953977           0.1      
+    1       23      0.0738006           0.1     Successful Poll
+    2       45      0.0637556           0.1     Successful Poll
+    3       67      0.0553925           0.1     Successful Poll
+    4       89      0.0476817           0.1     Successful Poll
+    5      111      0.0425659           0.1     Successful Poll
+    6      133      0.0359054           0.1     Successful Poll
+    7      155       0.028694           0.1     Successful Poll
+    8      177      0.0271727           0.1     Successful Poll
+    9      199      0.0263981           0.1     Successful Poll
+   10      221      0.0251034           0.1     Successful Poll
+   11      243      0.0239125           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0739774           0.1      
+    1       23      0.0597206           0.1     Successful Poll
+    2       45      0.0486032           0.1     Successful Poll
+    3       67      0.0377876           0.1     Successful Poll
+    4       89      0.0333647           0.1     Successful Poll
+    5      111      0.0282088           0.1     Successful Poll
+    6      133      0.0254898           0.1     Successful Poll
+    7      155      0.0232771           0.1     Successful Poll
+    8      177      0.0227275           0.1     Successful Poll
+    9      199      0.0220221           0.1     Successful Poll
+   10      221      0.0202274           0.1     Successful Poll
+   11      243      0.0191625           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0626013           0.1      
+    1       23      0.0564139           0.1     Successful Poll
+    2       45      0.0525156           0.1     Successful Poll
+    3       67      0.0483169           0.1     Successful Poll
+    4       89      0.0439464           0.1     Successful Poll
+    5      110      0.0416042           0.1     Successful Poll
+    6      131      0.0346064           0.1     Successful Poll
+    7      152      0.0323171           0.1     Successful Poll
+    8      173       0.029337           0.1     Successful Poll
+    9      194      0.0276406           0.1     Successful Poll
+   10      215      0.0237422           0.1     Successful Poll
+   11      235      0.0222081           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0539048           0.1      
+    1       23      0.0432295           0.1     Successful Poll
+    2       45      0.0390839           0.1     Successful Poll
+    3       67      0.0337934           0.1     Successful Poll
+    4       89      0.0324626           0.1     Successful Poll
+    5      111      0.0307849           0.1     Successful Poll
+    6      133      0.0297714           0.1     Successful Poll
+    7      155       0.027809           0.1     Successful Poll
+    8      176      0.0261304           0.1     Successful Poll
+    9      197      0.0243688           0.1     Successful Poll
+   10      218      0.0221395           0.1     Successful Poll
+   11      239      0.0178028           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0406264           0.1      
+    1       23      0.0352019           0.1     Successful Poll
+    2       45      0.0318304           0.1     Successful Poll
+    3       67      0.0297176           0.1     Successful Poll
+    4       89      0.0257044           0.1     Successful Poll
+    5      111      0.0236228           0.1     Successful Poll
+    6      132      0.0212566           0.1     Successful Poll
+    7      153       0.020078           0.1     Successful Poll
+    8      174      0.0176761           0.1     Successful Poll
+    9      195       0.016721           0.1     Successful Poll
+   10      216      0.0154646           0.1     Successful Poll
+   11      237      0.0150515           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0246639           0.1      
+    1       23      0.0228865           0.1     Successful Poll
+    2       45      0.0207423           0.1     Successful Poll
+    3       67      0.0179256           0.1     Successful Poll
+    4       89      0.0150989           0.1     Successful Poll
+    5      111      0.0132385           0.1     Successful Poll
+    6      132      0.0109402           0.1     Successful Poll
+    7      153     0.00957737           0.1     Successful Poll
+    8      174     0.00888637           0.1     Successful Poll
+    9      195     0.00804402           0.1     Successful Poll
+   10      216     0.00756847           0.1     Successful Poll
+   11      237     0.00728386           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0233064           0.1      
+    1       23      0.0184331           0.1     Successful Poll
+    2       45      0.0156312           0.1     Successful Poll
+    3       67      0.0152837           0.1     Successful Poll
+    4       89       0.012907           0.1     Successful Poll
+    5      111      0.0120354           0.1     Successful Poll
+    6      133      0.0117601           0.1     Successful Poll
+    7      155      0.0113779           0.1     Successful Poll
+    8      177      0.0112004           0.1     Successful Poll
+    9      199      0.0108291           0.1     Successful Poll
+   10      221     0.00936574           0.1     Successful Poll
+   11      243     0.00936574          0.05     Refine Mesh
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0213199           0.1      
+    1       29      0.0179316           0.1     Successful Poll
+    2       57      0.0159349           0.1     Successful Poll
+    3       85      0.0158544           0.1     Successful Poll
+    4      113      0.0158077           0.1     Successful Poll
+    5      141      0.0157814           0.1     Successful Poll
+    6      169      0.0157748           0.1     Successful Poll
+    7      197      0.0157748          0.05     Refine Mesh
+    8      225      0.0157655           0.1     Successful Poll
+    9      253      0.0157618           0.1     Successful Poll
+   10      281      0.0157589           0.1     Successful Poll
+   11      309      0.0157552           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0258307           0.1      
+    1       17      0.0241691           0.1     Successful Poll
+    2       33      0.0232666           0.1     Successful Poll
+    3       49      0.0230614           0.1     Successful Poll
+    4       65      0.0230614          0.05     Refine Mesh
+    5       81      0.0230614         0.025     Refine Mesh
+    6       97      0.0230614        0.0125     Refine Mesh
+    7      113      0.0230024         0.025     Successful Poll
+    8      129      0.0230024        0.0125     Refine Mesh
+    9      145      0.0230024       0.00625     Refine Mesh
+Optimization terminated: change in X less than options.TolX.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0111537           0.1      
+    1       41       0.010601           0.1     Successful Poll
+    2       81      0.0103602           0.1     Successful Poll
+    3      121      0.0101787           0.1     Successful Poll
+    4      161      0.0100808           0.1     Successful Poll
+    5      201      0.0100092           0.1     Successful Poll
+    6      241     0.00998408           0.1     Successful Poll
+    7      281      0.0099282           0.1     Successful Poll
+    8      321      0.0098473           0.1     Successful Poll
+    9      361     0.00980323           0.1     Successful Poll
+   10      401     0.00978457           0.1     Successful Poll
+   11      441     0.00977867           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0146464           0.1      
+    1       41      0.0121009           0.1     Successful Poll
+    2       81      0.0119908           0.1     Successful Poll
+    3      121      0.0119118           0.1     Successful Poll
+    4      161      0.0118664           0.1     Successful Poll
+    5      201      0.0112392           0.1     Successful Poll
+    6      241      0.0110974           0.1     Successful Poll
+    7      281      0.0109076           0.1     Successful Poll
+    8      321       0.010883           0.1     Successful Poll
+    9      361       0.010839           0.1     Successful Poll
+   10      401      0.0108172           0.1     Successful Poll
+   11      441      0.0108172          0.05     Refine Mesh
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0334499           0.1      
+    1       35       0.028028           0.1     Successful Poll
+    2       69      0.0203905           0.1     Successful Poll
+    3      103      0.0177836           0.1     Successful Poll
+    4      137      0.0160861           0.1     Successful Poll
+    5      171      0.0143675           0.1     Successful Poll
+    6      205      0.0135084           0.1     Successful Poll
+    7      239      0.0129007           0.1     Successful Poll
+    8      273      0.0128081           0.1     Successful Poll
+    9      307      0.0127952           0.1     Successful Poll
+   10      341       0.012777           0.1     Successful Poll
+   11      375      0.0127633           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0882016           0.1      
+    1       23      0.0767073           0.1     Successful Poll
+    2       45      0.0579215           0.1     Successful Poll
+    3       67      0.0497473           0.1     Successful Poll
+    4       88      0.0452095           0.1     Successful Poll
+    5      109      0.0407687           0.1     Successful Poll
+    6      130      0.0374597           0.1     Successful Poll
+    7      151      0.0347742           0.1     Successful Poll
+    8      172      0.0323028           0.1     Successful Poll
+    9      193      0.0305223           0.1     Successful Poll
+   10      214      0.0293211           0.1     Successful Poll
+   11      235      0.0278066           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0842056           0.1      
+    1       23      0.0661714           0.1     Successful Poll
+    2       45      0.0487398           0.1     Successful Poll
+    3       67      0.0341964           0.1     Successful Poll
+    4       88      0.0310617           0.1     Successful Poll
+    5      109       0.029509           0.1     Successful Poll
+    6      130       0.028208           0.1     Successful Poll
+    7      151      0.0269207           0.1     Successful Poll
+    8      172      0.0266516           0.1     Successful Poll
+    9      193      0.0263543           0.1     Successful Poll
+   10      214      0.0262799           0.1     Successful Poll
+   11      235      0.0260371           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0781407           0.1      
+    1       23      0.0606412           0.1     Successful Poll
+    2       45      0.0458868           0.1     Successful Poll
+    3       67      0.0408264           0.1     Successful Poll
+    4       89      0.0339571           0.1     Successful Poll
+    5      111      0.0292716           0.1     Successful Poll
+    6      133      0.0261105           0.1     Successful Poll
+    7      155      0.0246228           0.1     Successful Poll
+    8      177      0.0223619           0.1     Successful Poll
+    9      199      0.0217294           0.1     Successful Poll
+   10      221      0.0205731           0.1     Successful Poll
+   11      243       0.019969           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0718602           0.1      
+    1       23      0.0590035           0.1     Successful Poll
+    2       45      0.0507257           0.1     Successful Poll
+    3       67      0.0446443           0.1     Successful Poll
+    4       89      0.0382493           0.1     Successful Poll
+    5      111      0.0352574           0.1     Successful Poll
+    6      133      0.0315049           0.1     Successful Poll
+    7      155       0.027873           0.1     Successful Poll
+    8      177      0.0266096           0.1     Successful Poll
+    9      199      0.0254978           0.1     Successful Poll
+   10      221      0.0236787           0.1     Successful Poll
+   11      243      0.0214639           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0525206           0.1      
+    1       23      0.0467788           0.1     Successful Poll
+    2       45      0.0430912           0.1     Successful Poll
+    3       67      0.0376259           0.1     Successful Poll
+    4       89      0.0344637           0.1     Successful Poll
+    5      111       0.032451           0.1     Successful Poll
+    6      133      0.0296416           0.1     Successful Poll
+    7      155      0.0268726           0.1     Successful Poll
+    8      177      0.0250319           0.1     Successful Poll
+    9      199      0.0231007           0.1     Successful Poll
+   10      221      0.0211207           0.1     Successful Poll
+   11      243      0.0192536           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0334978           0.1      
+    1       23      0.0295081           0.1     Successful Poll
+    2       45      0.0252016           0.1     Successful Poll
+    3       67      0.0224064           0.1     Successful Poll
+    4       89       0.020972           0.1     Successful Poll
+    5      111      0.0195562           0.1     Successful Poll
+    6      133      0.0172191           0.1     Successful Poll
+    7      155      0.0155145           0.1     Successful Poll
+    8      177      0.0127374           0.1     Successful Poll
+    9      199      0.0102097           0.1     Successful Poll
+   10      221     0.00819875           0.1     Successful Poll
+   11      243     0.00680518           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1        0.01324           0.1      
+    1       23     0.00953038           0.1     Successful Poll
+    2       45     0.00938618           0.1     Successful Poll
+    3       67     0.00822514           0.1     Successful Poll
+    4       89     0.00681842           0.1     Successful Poll
+    5      111     0.00574268           0.1     Successful Poll
+    6      133     0.00574268          0.05     Refine Mesh
+    7      155     0.00571651           0.1     Successful Poll
+    8      177     0.00571651          0.05     Refine Mesh
+    9      199     0.00563665           0.1     Successful Poll
+   10      221     0.00563665          0.05     Refine Mesh
+   11      243     0.00538903           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0208588           0.1      
+    1       23      0.0196064           0.1     Successful Poll
+    2       45      0.0185786           0.1     Successful Poll
+    3       67      0.0183191           0.1     Successful Poll
+    4       89      0.0180994           0.1     Successful Poll
+    5      110      0.0179972           0.1     Successful Poll
+    6      131      0.0177864           0.1     Successful Poll
+    7      152      0.0176071           0.1     Successful Poll
+    8      173      0.0176071          0.05     Refine Mesh
+    9      194      0.0153329           0.1     Successful Poll
+   10      215      0.0140586           0.1     Successful Poll
+   11      236      0.0123721           0.1     Successful Poll
+Maximum number of iterations exceeded: increase options.MaxIter.
+
+
+Iter     f-count          f(x)      MeshSize     Method
+    0        1      0.0174537           0.1      
+    1       29       0.016126           0.1     Successful Poll
+    2       57      0.0153746           0.1     Successful Poll
+    3       85      0.0147897           0.1     Successful Poll
+    4      113      0.0147083           0.1     Successful Poll
+    5      141      0.0143298           0.1     Successful Poll
+    6      169      0.0142149           0.1     Successful Poll
+    7      197      0.0142149          0.05     Refine Mesh
+    8      225       0.013334           0.1     Successful Poll
+    9      252       0.012937           0.1     Successful Poll
+   10      279      0.0128516           0.1     Successful Poll
+   11      306      0.0128516          0.05     Refine Mesh
+Maximum number of iterations exceeded: increase options.MaxIter.
+... saved as data/OPT_RESULT_735938.267875.mat
+</pre><img vspace="5" hspace="5" src="readme1_01.png" alt=""> <img vspace="5" hspace="5" src="readme1_02.png" alt=""> <img vspace="5" hspace="5" src="readme1_03.png" alt=""> <img vspace="5" hspace="5" src="readme1_04.png" alt=""> <img vspace="5" hspace="5" src="readme1_05.png" alt=""> <img vspace="5" hspace="5" src="readme1_06.png" alt=""> <img vspace="5" hspace="5" src="readme1_07.png" alt=""> <img vspace="5" hspace="5" src="readme1_08.png" alt=""> <img vspace="5" hspace="5" src="readme1_09.png" alt=""> <img vspace="5" hspace="5" src="readme1_10.png" alt=""> <img vspace="5" hspace="5" src="readme1_11.png" alt=""> <img vspace="5" hspace="5" src="readme1_12.png" alt=""> <img vspace="5" hspace="5" src="readme1_13.png" alt=""> <img vspace="5" hspace="5" src="readme1_14.png" alt=""> <img vspace="5" hspace="5" src="readme1_15.png" alt=""> <img vspace="5" hspace="5" src="readme1_16.png" alt=""> <img vspace="5" hspace="5" src="readme1_17.png" alt=""> <img vspace="5" hspace="5" src="readme1_18.png" alt=""> <img vspace="5" hspace="5" src="readme1_19.png" alt=""> <img vspace="5" hspace="5" src="readme1_20.png" alt=""> <img vspace="5" hspace="5" src="readme1_21.png" alt=""> <img vspace="5" hspace="5" src="readme1_22.png" alt=""> <img vspace="5" hspace="5" src="readme1_23.png" alt=""> <img vspace="5" hspace="5" src="readme1_24.png" alt=""> <img vspace="5" hspace="5" src="readme1_25.png" alt=""> <img vspace="5" hspace="5" src="readme1_26.png" alt=""> <img vspace="5" hspace="5" src="readme1_27.png" alt=""> <img vspace="5" hspace="5" src="readme1_28.png" alt=""> <img vspace="5" hspace="5" src="readme1_29.png" alt=""> <img vspace="5" hspace="5" src="readme1_30.png" alt=""> <img vspace="5" hspace="5" src="readme1_31.png" alt=""> <img vspace="5" hspace="5" src="readme1_32.png" alt=""> <img vspace="5" hspace="5" src="readme1_33.png" alt=""> <img vspace="5" hspace="5" src="readme1_34.png" alt=""> <img vspace="5" hspace="5" src="readme1_35.png" alt=""> <img vspace="5" hspace="5" src="readme1_36.png" alt=""> <img vspace="5" hspace="5" src="readme1_37.png" alt=""> <img vspace="5" hspace="5" src="readme1_38.png" alt=""> <img vspace="5" hspace="5" src="readme1_39.png" alt=""> <img vspace="5" hspace="5" src="readme1_40.png" alt=""> <img vspace="5" hspace="5" src="readme1_41.png" alt=""> <img vspace="5" hspace="5" src="readme1_42.png" alt=""> <img vspace="5" hspace="5" src="readme1_43.png" alt=""> <img vspace="5" hspace="5" src="readme1_44.png" alt=""> <img vspace="5" hspace="5" src="readme1_45.png" alt=""> <img vspace="5" hspace="5" src="readme1_46.png" alt=""> <img vspace="5" hspace="5" src="readme1_47.png" alt=""> <img vspace="5" hspace="5" src="readme1_48.png" alt=""> <img vspace="5" hspace="5" src="readme1_49.png" alt=""> <img vspace="5" hspace="5" src="readme1_50.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Trajectory optimization using pattern search
+%
+% Back to the <'readme.html' main> page.
+
+%%
+% *initialization*
+close all; clear all; clc
+
+% helper for displaying the file source in web browser
+openInEditor = @(fname) edit(fullfile(pwd, fname));
+
+%% Dwell time optimization
+% Conduct dwell time optimization using Pattern Search method
+%
+%   [r, dwellTime] = dwellopt(wa, wd, wf, w1, w2, crt, strokeTime, timeStep, stepAngleDeg, leafWidth)
+%
+%  varargin:
+%    @params to be optimized
+%      wa   REPLACE_WITH_DASH_DASH  weight factors of number of acceleration steps, (0, 1)
+%      wd   REPLACE_WITH_DASH_DASH  weight factors of number of deceleration steps, (0, 1)
+%      wf   REPLACE_WITH_DASH_DASH  weight factors of initial frequency, (0, 1)
+%      w1   REPLACE_WITH_DASH_DASH  to enlarge amplitude of peaks or valleys
+%      w2   REPLACE_WITH_DASH_DASH  to braoden step differences
+%    @params to set
+%      ogee          REPLACE_WITH_DASH_DASH  initial dwell time data
+%      strokeTime    REPLACE_WITH_DASH_DASH  time per a stroke [s]
+%      timeStep      REPLACE_WITH_DASH_DASH  time step
+%      stepAngleDeg  REPLACE_WITH_DASH_DASH  step angle in degree
+%      leafWidth     REPLACE_WITH_DASH_DASH  width of the dynamic leaf
+%  varargout:
+%    r           REPLACE_WITH_DASH_DASH  RMSD of dwell time
+%    dwellTime   REPLACE_WITH_DASH_DASH  calculated dwell time
+%
+% Source code:
+%
+% * <matlab:edit('dwelloptRun.m') *dwelloptRun.m*>
+% * + <matlab:edit('spdiv.m') spdiv.m>
+% * ++ <matlab:edit('spis.m') spis.m>
+% * ++ <matlab:edit('findpoints.m') findpoints.m>
+% * + <matlab:edit('spdivRun.m') spdivRun.m>
+% * <matlab:edit('dwellopt.m') *dwellopt.m*>
+% * + <matlab:edit('stepsamp.m') stepsamp.m>
+% * ++ <matlab:edit('timeperstepd.m') timeperstepd.m>
+% * + <matlab:edit('step2width.m') step2width.m>
+% * + <matlab:edit('timecount.m') timecount.m>
+% * + <matlab:edit('rmsd.m') rmsd.m>
+%
+
+leafWidth = 60; % 60 mm
+timeStep = 0.001; % 1ms
+stepAngleDeg = 1.8 / 8; % degree
+
+% load the latest edition of DWELL_TIME_*.mat
+latestFile = selatest('data', 'DWELL_TIME_*.mat');
+D = load(latestFile);
+
+% call the script for dividing splines into S-curves
+useDefaultSettings = false; spdivRun
+
+% append C to DWELL_TIME_*.mat
+save(latestFile, 'C', '-append')
+disp(['... append C to ' latestFile])
+
+% Profile the trajectory optimization
+% profile on
+
+% call the script for generating the ion beam current density distribution
+useDefaultSettings = false; dwelloptRun
+
+% profile off
+% profsave(profile('info'),'dwellopt_profile')
+
+
+fileName = ['data/OPT_RESULT_' num2str(now, 12) '.mat'];
+save(fileName, 'C', 'params', 'rmsds', 'optDwellTime')
+disp(['... saved as ' fileName])
+
+
+##### SOURCE END #####
+--></body></html>
